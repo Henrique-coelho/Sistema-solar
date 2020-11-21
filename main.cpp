@@ -13,6 +13,7 @@ static float e = 1.0;           // Intensidade da cor especular da luz branca
 static float m = 0.2;           // Intensidade da luz ambiente global
 static float p = 1.0;           // A luz branca é posicional?
 static float s = 50.0;          // Expoente especular do material (shininess)
+static float distancia = 20;
 float matShine[] = { s };                       // expoente especular (shininess)
 static float xAngle = 0.0, yAngle = 0.0;        // Rotação da luz branca
 static long font = (long)GLUT_BITMAP_8_BY_13;   // Fonte usada para imprimir na tela
@@ -44,32 +45,32 @@ int modo = 1;
 
 
 float diametroSol       =   70/teste;
-float diametroMerc      =   1.5/teste; //1/teste
-float diametroVenus     =   2.5/teste;
-float diametroTerra     =   2.7/teste;
-float diametroMarte     =   1.4/teste;
-float diametroJupiter   =   30/teste;
-float diametroSaturno   =   25/teste;
+float diametroMerc      =   9/teste; //1/teste
+float diametroVenus     =   15/teste;
+float diametroTerra     =   16.2/teste;
+float diametroMarte     =   8.4/teste;
+float diametroJupiter   =   36/teste;
+float diametroSaturno   =   30/teste;
 float diametroUrano     =   10.7/teste;
 float diametroNetuno    =   10.3/teste;
 
 
-float distMerc      =   11; //5.8
-float distVenus     =   13; //10.8
+float distMerc      =   5;
+float distVenus     =   10;
 float distTerra     =   15;
-float distMarte     =   23;
-float distJupiter   =   41;
-float distSaturno   =   143;
-float distUrano     =   287;
-float distNetuno    =   450;
-float distPlutao    =   592;
+float distMarte     =   20;
+float distJupiter   =   30;
+float distSaturno   =   40;
+float distUrano     =   50;
+float distNetuno    =   60;
+float distPlutao    =   70;
 
 
-float velTransMerc = 0.05;
-float velTransVenus = 0.03;
-float velTransTerra = 0.01;
-float velTransMarte = 0.009;
-float velTransJupiter = 0.0025;
+float velTransMerc = 0.5;
+float velTransVenus = 0.3;
+float velTransTerra = 0.1;
+float velTransMarte = 0.09;
+float velTransJupiter = 0.025;
 float velTransSaturno = 0.05;
 float velTransUrano = 0.03;
 float velTransNetuno = 0.01;
@@ -533,8 +534,8 @@ void keyInput(unsigned char key, int x, int y)
             modo*=-1;
         }
         else if(modo==-1){
-            olhoX = 5;
-            olhoY = 25;
+            olhoX = 10;
+            olhoY = 50;
             olhoZ = 0;
             modo*=-1;
             printf("%d\n", modo);
@@ -588,8 +589,8 @@ void resize(int w, int h)
 }
 
 void posicionaCamera(int x, int y) {
-    xMouse = x; //Quando mexe o mouse a camera muda
-    yMouse = y;
+    xMouse = olhoX; //Quando mexe o mouse a camera muda
+    yMouse = olhoY;
 
     glutPostRedisplay();
 }
@@ -600,6 +601,8 @@ void rotacionaEsfera() {
 }
 
 // Imprime a ajuda no console
+
+
 
 int main(int argc, char *argv[])
 {
@@ -615,7 +618,7 @@ int main(int argc, char *argv[])
     glutPassiveMotionFunc(posicionaCamera);
     glutSpecialFunc(specialKeyInput);
     glutIdleFunc(rotacionaEsfera);
-
+    glEnable(GL_TEXTURE_2D);
     setup();
 
     glutMainLoop();
