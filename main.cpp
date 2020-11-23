@@ -19,6 +19,7 @@ typedef struct {
 
 Astro astros[9];
 
+static bool lightSolLigada = 1;
 static float d = 1.0;           // Intensidade da cor difusa da luz branca
 static float e = 1.0;           // Intensidade da cor especular da luz branca
 static float m = 0.2;           // Intensidade da luz ambiente global
@@ -26,16 +27,16 @@ static float p = 1.0;           // A luz branca é posicional?
 static float s = 50.0;          // Expoente especular do material (shininess)
 static float distancia = 20;
 float matShine[] = { s };                       // expoente especular (shininess)
-static float xAngle = 0.0, yAngle = 0.0;        // Rotação da luz branca
 static long font = (long)GLUT_BITMAP_8_BY_13;   // Fonte usada para imprimir na tela
 static char theStringBuffer[10];                // String buffer
-static float xMouse = 250, yMouse = 250;        // (x,y) do ponteiro do mouse
 static float larguraJanela, alturaJanela;       // (w,h) da janela
 static bool isLightingOn = false;               // O sistema de iluminação está ligado?
 static float anguloEsferaY = 0;                 // Rotação da esfera em torno do eixo y
 static int esferaLados = 200;                   // Quantas subdivisões latitudinais/longitudinais da esfera
 static bool localViewer = false;
 static bool usarTextura = true;
+static float emissao[] = {1.0 , 1.0 , 1.0 , 1.0};
+static float emissaoDefault[] = {0.0 , 0.0 , 0.0 , 1.0};
 
 static int teste = 10;
 
@@ -202,6 +203,17 @@ void solidSphere(float radius, int stacks, int columns)
 
 void desenhaAstros(){
 	for(int i=0;i<NumAstros;i++){
+        if(i==0){
+            if(isLightingOn && lightSolLigada){
+            glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, emissao);
+            }
+            else{
+                glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, emissaoDefault);
+            }
+        }
+        else{
+            glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, emissaoDefault);
+        }
 		if(usarTextura) {
        			glEnable(GL_TEXTURE_2D);
      			glBindTexture(GL_TEXTURE_2D, astros[i].textura);
@@ -226,15 +238,26 @@ void desenhaCena()
 {
     // Propriedades das fontes de luz
     float lightAmb[] = { 0.0, 0.0, 0.0, 1.0 };
-    float lightDif0[] = { d, d, d, 1.0 };
-    float lightSpec0[] = { e, e, e, 1.0 };
-    float lightPos0[] = { 0.0, 0.0, 3.0, p };
+    float lightDif0[] = { 1.0 , 1.0 , 1.0, 1.0 };
+    float lightSpec0[] = { 1.0 , 1.0 , 1.0 , 1.0 };
+    float lightPos0[] = { 0.0, 0.0, 0.0, 1.0 };
     float lightDifAndSpec1[] = { 0.0, 1.0, 0.0, 1.0 };
-    float lightPos1[] = { 1.0, 2.0, 0.0, 1.0 };
-    float globAmb[] = { m, m, m, 1.0 };
+    float globAmb[] = { 0.2 , 0.2 , 0.2 , 1.0 };
 
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, globAmb);        // Luz ambiente global
     glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, localViewer);// Enable local viewpoint
+
+    // Propriedades da fonte de luz LIGHT0
+    glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmb);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDif0);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpec0);
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPos0);
+
+    if (lightSolLigada) {
+        glEnable(GL_LIGHT0);
+    } else {
+        glDisable(GL_LIGHT0);
+    }
 
     // Limpa a tela e o z-buffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -247,8 +270,6 @@ void desenhaCena()
 
     // Desabilita iluminação para desenhar as esferas que representam as luzes
     glDisable(GL_LIGHTING);
-
-
 
     if (isLightingOn) {
         glEnable(GL_LIGHTING);
@@ -273,35 +294,6 @@ void keyInput(unsigned char key, int x, int y)
     case 27:
         exit(0);
         break;
-    case 'p':
-    case 'P':
-        if (p) p = 0.0;
-        else p = 1.0;
-        break;
-    case 'd':
-        if (d > 0.0) d -= 0.05;
-        break;
-    case 'D':
-        if (d < 1.0) d += 0.05;
-        break;
-    case 'e':
-        if (e > 0.0) e -= 0.05;
-        break;
-    case 'E':
-        if (e < 1.0) e += 0.05;
-        break;
-    case 's':
-        if (s > 5.0) s -= 2.00;
-        break;
-    case 'S':
-        if (s < 100.0) s += 2.00;
-        break;
-    case 'm':
-        if (m > 0.0) m -= 0.05;
-        break;
-    case 'M':
-        if (m < 1.0) m += 0.05;
-        break;
     case 'l':
     case 'L':
         isLightingOn = !isLightingOn;
@@ -312,7 +304,7 @@ void keyInput(unsigned char key, int x, int y)
         break;
     case 'v':
     case 'V':
-        localViewer = !localViewer;
+        lightSolLigada = !lightSolLigada;
         break;
     case 'c':
     case 'C':
@@ -339,27 +331,7 @@ void keyInput(unsigned char key, int x, int y)
 // Callback para setas do teclado
 void specialKeyInput(int key, int x, int y)
 {
-    if(key == GLUT_KEY_DOWN)
-    {
-        xAngle++;
-        if (xAngle > 360.0) xAngle -= 360.0;
-    }
-    if(key == GLUT_KEY_UP)
-    {
-        xAngle--;
-        if (xAngle < 0.0) xAngle += 360.0;
-    }
-    if(key == GLUT_KEY_RIGHT)
-    {
-        yAngle++;
-        if (yAngle > 360.0) yAngle -= 360.0;
-    }
-    if(key == GLUT_KEY_LEFT)
-    {
-        yAngle--;
-        if (yAngle < 0.0) yAngle += 360.0;
-    }
-    glutPostRedisplay();
+    
 }
 
 // Callback de redimensionamento
@@ -374,13 +346,6 @@ void resize(int w, int h)
     gluPerspective(100.0, (float)w/(float)h, 1.0, 1000);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-}
-
-void posicionaCamera(int x, int y) {
-    xMouse = olhoX; //Quando mexe o mouse a camera muda
-    yMouse = olhoY;
-
-    glutPostRedisplay();
 }
 
 void rotacionaEsfera() {
@@ -403,7 +368,6 @@ int main(int argc, char *argv[])
     glutDisplayFunc(desenhaCena);
     glutReshapeFunc(resize);
     glutKeyboardFunc(keyInput);
-    glutPassiveMotionFunc(posicionaCamera);
     glutSpecialFunc(specialKeyInput);
     glutIdleFunc(rotacionaEsfera);
     glEnable(GL_TEXTURE_2D);
