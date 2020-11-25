@@ -328,13 +328,13 @@ void keyInput(unsigned char key, int x, int y)
         break;
     case 'c':
     case 'C':
-        if(modo==1){
+        if(modo==-1){
             olhoX = 12;
             olhoY = 12;
             olhoZ = 5;
             modo*=-1;
         }
-        else if(modo==-1){
+        else if(modo==1){
             olhoX = 10;
             olhoY = 50;
             olhoZ = 0;
