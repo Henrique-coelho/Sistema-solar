@@ -37,6 +37,8 @@ static bool localViewer = false;
 static bool usarTextura = true;
 static float emissao[] = {1.0 , 1.0 , 1.0 , 1.0};
 static float emissaoDefault[] = {0.0 , 0.0 , 0.0 , 1.0};
+static bool orbitaLigada = false;
+float angulo = 0;
 
 static int teste = 10;
 
@@ -228,7 +230,19 @@ void desenhaAstros(){
    		glPopMatrix();
 		if (usarTextura) {
     			glDisable(GL_TEXTURE_2D);
-    		}
+    	}
+
+        if(orbitaLigada){
+            glPushMatrix();
+                glLineWidth(2);
+            glBegin(GL_LINE_LOOP);
+            for(int j = 0 ; j <= 360 ; j++){
+                angulo = 2 * 3.14 * j/360;
+                glVertex3f(cos(angulo) * astros[i].distancia, 0 ,sin(angulo) * astros[i].distancia);
+            }
+            glEnd();
+            glPopMatrix();
+        }
 	}
 	glutSwapBuffers();
 }
@@ -302,8 +316,8 @@ void keyInput(unsigned char key, int x, int y)
     case 'T':
         usarTextura = !usarTextura;
         break;
-    case 'v':
-    case 'V':
+    case 's':
+    case 'S':
         lightSolLigada = !lightSolLigada;
         break;
     case 'c':
@@ -320,8 +334,13 @@ void keyInput(unsigned char key, int x, int y)
             olhoZ = 0;
             modo*=-1;
         }
-
         break;
+
+    case 'o':
+    case 'O':
+        orbitaLigada = !orbitaLigada;
+    break;
+
     default:
         break;
     }
