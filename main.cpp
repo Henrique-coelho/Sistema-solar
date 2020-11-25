@@ -217,9 +217,9 @@ void desenhaAstros(){
             glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, emissaoDefault);
         }
 		if(usarTextura) {
-       			glEnable(GL_TEXTURE_2D);
-     			glBindTexture(GL_TEXTURE_2D, astros[i].textura);
-    		}
+   			glEnable(GL_TEXTURE_2D);
+ 			glBindTexture(GL_TEXTURE_2D, astros[i].textura);
+    	}
     		glPushMatrix();
 		if(i!=0){
 			glTranslatef(-cos(anguloEsferaY*astros[i].velocidade)*astros[i].distancia ,0,-sin(anguloEsferaY*astros[i].velocidade)*astros[i].distancia);
@@ -229,10 +229,16 @@ void desenhaAstros(){
     		solidSphere(astros[i].diametro, esferaLados, esferaLados);
    		glPopMatrix();
 		if (usarTextura) {
-    			glDisable(GL_TEXTURE_2D);
+    		glDisable(GL_TEXTURE_2D);
     	}
 
         if(orbitaLigada){
+            if(isLightingOn && lightSolLigada){
+            glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, emissao);
+            }
+            else{
+                glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, emissaoDefault);
+            }
             glPushMatrix();
                 glLineWidth(2);
             glBegin(GL_LINE_LOOP);
