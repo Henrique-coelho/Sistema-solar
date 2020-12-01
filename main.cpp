@@ -4,76 +4,48 @@
 #include <SOIL/SOIL.h>
 #include <GL/glew.h>
 #include <GL/freeglut.h>
-#include <cmath>
+#include <math.h>
 
+#define NumAstros 9
+#define MaxStringSize 40
 using namespace std;
 
+typedef struct {
+	float diametro;
+	float distancia;
+	float velocidade;
+	GLuint textura;
+} Astro;
+
+Astro astros[9];
+
+static bool lightSolLigada = 1;
 static float d = 1.0;           // Intensidade da cor difusa da luz branca
 static float e = 1.0;           // Intensidade da cor especular da luz branca
 static float m = 0.2;           // Intensidade da luz ambiente global
 static float p = 1.0;           // A luz branca é posicional?
 static float s = 50.0;          // Expoente especular do material (shininess)
+static float distancia = 20;
 float matShine[] = { s };                       // expoente especular (shininess)
-static float xAngle = 0.0, yAngle = 0.0;        // Rotação da luz branca
 static long font = (long)GLUT_BITMAP_8_BY_13;   // Fonte usada para imprimir na tela
 static char theStringBuffer[10];                // String buffer
-static float xMouse = 250, yMouse = 250;        // (x,y) do ponteiro do mouse
 static float larguraJanela, alturaJanela;       // (w,h) da janela
 static bool isLightingOn = false;               // O sistema de iluminação está ligado?
 static float anguloEsferaY = 0;                 // Rotação da esfera em torno do eixo y
 static int esferaLados = 200;                   // Quantas subdivisões latitudinais/longitudinais da esfera
 static bool localViewer = false;
 static bool usarTextura = true;
+static float emissao[] = {1.0 , 1.0 , 1.0 , 1.0};
+static float emissaoDefault[] = {0.0 , 0.0 , 0.0 , 1.0};
+static bool orbitaLigada = false;
+float angulo = 0;
 
-static int solTexture;
-static int mercurioTexture;
-static int venusTexture;
-static int terraTexture;
-static int marteTexture;
-static int jupiterTexture;
-static int saturnoTexture;
-static int uranoTexture;
-static int netunoTexture;
-//static int plutaoTexture;
 static int teste = 10;
 
 float olhoX = 12;
 float olhoY =12;
 float olhoZ = 5;
 int modo = 1;
-
-
-float diametroSol       =   70/teste;
-float diametroMerc      =   1.5/teste; //1/teste
-float diametroVenus     =   2.5/teste;
-float diametroTerra     =   2.7/teste;
-float diametroMarte     =   1.4/teste;
-float diametroJupiter   =   30/teste;
-float diametroSaturno   =   25/teste;
-float diametroUrano     =   10.7/teste;
-float diametroNetuno    =   10.3/teste;
-
-
-float distMerc      =   11; //5.8
-float distVenus     =   13; //10.8
-float distTerra     =   15;
-float distMarte     =   23;
-float distJupiter   =   41;
-float distSaturno   =   143;
-float distUrano     =   287;
-float distNetuno    =   450;
-float distPlutao    =   592;
-
-
-float velTransMerc = 0.05;
-float velTransVenus = 0.03;
-float velTransTerra = 0.01;
-float velTransMarte = 0.009;
-float velTransJupiter = 0.0025;
-float velTransSaturno = 0.05;
-float velTransUrano = 0.03;
-float velTransNetuno = 0.01;
-
 
 /* 
     Distância média Planetas-Sol
@@ -104,11 +76,81 @@ float velTransNetuno = 0.01;
     Dados: planetario.ufsc.br/o-sistema-solar/
 */
 
+void inicializarAstros(){
+	// Valores do Sol:
+	astros[0].diametro = 70/teste;
+	astros[0].distancia = 0;  // Não utilizado
+	astros[0].velocidade = 0; // Não utilizado
+
+	// Valores do Mercúrio:
+	astros[1].diametro = 10/teste;
+	astros[1].distancia = 10;
+	astros[1].velocidade = 0.08;
+
+	// Valores de Vênus:
+	astros[2].diametro = 15/teste;
+	astros[2].distancia = 15;
+	astros[2].velocidade = 0.16;
+
+	// Valores da Terra:
+	astros[3].diametro = 16.2/teste;
+	astros[3].distancia = 20;
+	astros[3].velocidade = 0.1;
+
+	// Valores de Marte:
+	astros[4].diametro = 8.4/teste;
+	astros[4].distancia = 25;
+	astros[4].velocidade = 0.09;
+
+	// Valores de Júpiter:
+	astros[5].diametro = 36/teste;
+	astros[5].distancia = 35;
+	astros[5].velocidade = 0.025;
+
+	// Valores de Saturno:
+	astros[6].diametro = 30/teste;
+	astros[6].distancia = 45;
+	astros[6].velocidade = 0.05;
+
+	// Valores de Urano:
+	astros[7].diametro = 10.7/teste;
+	astros[7].distancia = 55;
+	astros[7].velocidade = 0.03;
+	
+	// Valores de Netuno:
+	astros[8].diametro = 10.3/teste;
+	astros[8].distancia = 65;
+	astros[8].velocidade = 0.01;
+}
+
+void carregarTexturaAstros(){
+	char arquivos[NumAstros][MaxStringSize] = {
+		"sol.jpg",
+		"mercurio.jpg",
+		"venus.jpg",
+		"terra.jpg",
+		"marte.jpg",
+		"jupiter.jpg",
+		"saturno.jpg",
+		"urano.jpg",
+		"netuno.jpg",
+		
+	};
+	for(int i=0;i<NumAstros;i++){
+		astros[i].textura = SOIL_load_OGL_texture(
+                	arquivos[i],
+			SOIL_LOAD_AUTO,
+        		SOIL_CREATE_NEW_ID,
+			SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
+                );
+		if (astros[i].textura==0)
+        		printf("Erro do SOIL: '%s'\n", SOIL_last_result());
+	}
+}
 
 // Configuração inicial do OpenGL e GLUT
 void setup(void)
 {
-    //glClearColor(.4,.4,.4, 0.0);                    // fundo cinza
     glClearColor(0,0,0, 0.0);
     glEnable(GL_DEPTH_TEST);                        // Ativa teste Z
 
@@ -124,132 +166,11 @@ void setup(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    // Carrega a textura do sol
-    solTexture = SOIL_load_OGL_texture
-    (
-        "sol.jpg",
-        SOIL_LOAD_AUTO,
-        SOIL_CREATE_NEW_ID,
-        SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
-    );
+    // Inicializa os valores de todos os astros
+    inicializarAstros();
 
-    if(solTexture == 0)
-    {
-        cout << "Problema ao carregar textura: " << SOIL_last_result() << endl;
-    }
-
-    // Carrega a textura de mercurio
-    mercurioTexture = SOIL_load_OGL_texture
-    (
-        "mercurio.jpg",
-        SOIL_LOAD_AUTO,
-        SOIL_CREATE_NEW_ID,
-        SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
-    );
-
-    if(mercurioTexture == 0)
-    {
-        cout << "Problema ao carregar textura: " << SOIL_last_result() << endl;
-    }
-
-    // Carrega a textura de venus
-    venusTexture = SOIL_load_OGL_texture
-    (
-        "venus.jpg",
-        SOIL_LOAD_AUTO,
-        SOIL_CREATE_NEW_ID,
-        SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
-    );
-
-    if(venusTexture == 0)
-    {
-        cout << "Problema ao carregar textura: " << SOIL_last_result() << endl;
-    }
-
-    // Carrega a textura da terra
-    terraTexture = SOIL_load_OGL_texture
-    (
-        "terra.jpg",
-        SOIL_LOAD_AUTO,
-        SOIL_CREATE_NEW_ID,
-        SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
-    );
-
-    if(terraTexture == 0)
-    {
-        cout << "Problema ao carregar textura: " << SOIL_last_result() << endl;
-    }
-
-    // Carrega a textura de marte
-    marteTexture = SOIL_load_OGL_texture
-    (
-        "marte.jpg",
-        SOIL_LOAD_AUTO,
-        SOIL_CREATE_NEW_ID,
-        SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
-    );
-
-    if(marteTexture == 0)
-    {
-        cout << "Problema ao carregar textura: " << SOIL_last_result() << endl;
-    }
-
-    // Carrega a textura de jupiter
-    jupiterTexture = SOIL_load_OGL_texture
-    (
-        "jupiter.jpg",
-        SOIL_LOAD_AUTO,
-        SOIL_CREATE_NEW_ID,
-        SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
-    );
-
-    if(jupiterTexture == 0)
-    {
-        cout << "Problema ao carregar textura: " << SOIL_last_result() << endl;
-    }
-
-    // Carrega a textura de saturno
-    saturnoTexture = SOIL_load_OGL_texture
-    (
-        "saturno.jpg",
-        SOIL_LOAD_AUTO,
-        SOIL_CREATE_NEW_ID,
-        SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
-    );
-
-    if(saturnoTexture == 0)
-    {
-        cout << "Problema ao carregar textura: " << SOIL_last_result() << endl;
-    }
-
-    // Carrega a textura de urano
-    uranoTexture = SOIL_load_OGL_texture
-    (
-        "urano.jpg",
-        SOIL_LOAD_AUTO,
-        SOIL_CREATE_NEW_ID,
-        SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
-    );
-
-    if(uranoTexture == 0)
-    {
-        cout << "Problema ao carregar textura: " << SOIL_last_result() << endl;
-    }
-
-    // Carrega a textura de netuno
-    netunoTexture = SOIL_load_OGL_texture
-    (
-        "netuno.jpg",
-        SOIL_LOAD_AUTO,
-        SOIL_CREATE_NEW_ID,
-        SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
-    );
-
-    if(netunoTexture == 0)
-    {
-        cout << "Problema ao carregar textura: " << SOIL_last_result() << endl;
-    }
-
+    // Carrega a textura do todos astros
+    carregarTexturaAstros();
 
     // Não mostrar faces do lado de dentro
     glEnable(GL_CULL_FACE);
@@ -272,160 +193,64 @@ void solidSphere(float radius, int stacks, int columns)
     // estilo preenchido... poderia ser GLU_LINE, GLU_SILHOUETTE
     // ou GLU_POINT
     gluQuadricDrawStyle(quadObj, GLU_FILL);
-    // chama 01 glNormal para cada vértice.. poderia ser
-    // GLU_FLAT (01 por face) ou GLU_NONE
+    // chama 01 glNormal para cada vértice.. poderia serGLU_FLAT (01 por face) ou GLU_NONE
     gluQuadricNormals(quadObj, GLU_SMOOTH);
     // chama 01 glTexCoord por vértice
     gluQuadricTexture(quadObj, GL_TRUE);
     // cria os vértices de uma esfera
     gluSphere(quadObj, radius, stacks, columns);
-    // limpa as variáveis que a GLU usou para criar
-    // a esfera
+    // limpa as variáveis que a GLU usou para criar a esfera
     gluDeleteQuadric(quadObj);
 }
 
-/*
-glTranslatef(-cos(anguloEsferaY*velocidadeTranslacao[i])*distanciaX[i],0,-sin(anguloEsferaY*velocidadeTranslacao[i])*distanciaZ[i]);//movimento de translação
-glRotatef(anguloPlaneta, 0, 1, 0); //movimento de rotação
-*/
+void desenhaAstros(){
+	for(int i=0;i<NumAstros;i++){
+        if(i==0){
+            if(isLightingOn && lightSolLigada){
+            glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, emissao);
+            }
+            else{
+                glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, emissaoDefault);
+            }
+        }
+        else{
+            glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, emissaoDefault);
+        }
+		if(usarTextura) {
+   			glEnable(GL_TEXTURE_2D);
+ 			glBindTexture(GL_TEXTURE_2D, astros[i].textura);
+    	}
+    		glPushMatrix();
+		if(i!=0){
+			glTranslatef(-cos(anguloEsferaY*astros[i].velocidade)*astros[i].distancia ,0,-sin(anguloEsferaY*astros[i].velocidade)*astros[i].distancia);
+        }
+   		glRotatef(anguloEsferaY, 0, 1, 0);
+    		glRotatef(270, 1, 0, 0);
+    		solidSphere(astros[i].diametro, esferaLados, esferaLados);
+   		glPopMatrix();
+		if (usarTextura) {
+    		glDisable(GL_TEXTURE_2D);
+    	}
 
-void desenhaPlanetas(){
-    // Desenha o sol
-    if (usarTextura) {
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, solTexture);
-    }
-    glPushMatrix();
-        glRotatef(anguloEsferaY, 0, 1, 0);
-        glRotatef(90, 1, 0, 0);
-        solidSphere(diametroSol, esferaLados, esferaLados);
-    glPopMatrix();
-    if (usarTextura) {
-        glDisable(GL_TEXTURE_2D);
-    }
-
-    //Desenha mercurio
-    if (usarTextura) {
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, mercurioTexture);
-    }
-    glPushMatrix();
-        glTranslatef(-cos(anguloEsferaY*velTransMerc)*distMerc ,0,-sin(anguloEsferaY*velTransMerc)*distMerc);//movimento de translação
-        glRotatef(anguloEsferaY, 0, 1, 0);
-        glRotatef(90, 1, 0, 0);
-        solidSphere(diametroMerc, esferaLados, esferaLados);
-    glPopMatrix();
-    if (usarTextura) {
-        glDisable(GL_TEXTURE_2D);
-    }
-
-    //Desenha venus
-    if (usarTextura) {
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, venusTexture);
-    }
-    glPushMatrix();
-        glTranslatef(-cos(anguloEsferaY*velTransVenus)*distVenus ,0,-sin(anguloEsferaY*velTransVenus)*distVenus);//movimento de translação
-        glRotatef(anguloEsferaY, 0, 1, 0);
-        glRotatef(90, 1, 0, 0);
-        solidSphere(diametroVenus, esferaLados, esferaLados);
-    glPopMatrix();
-    if (usarTextura) {
-        glDisable(GL_TEXTURE_2D);
-    }
-
-    //Desenha terra
-    if (usarTextura) {
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, terraTexture);
-    }
-    glPushMatrix();
-        glTranslatef(-cos(anguloEsferaY*velTransTerra)*distTerra ,0,-sin(anguloEsferaY*velTransTerra)*distTerra);//movimento de translação
-        glRotatef(anguloEsferaY, 0, 1, 0);
-        glRotatef(90, 1, 0, 0);
-        solidSphere(diametroTerra, esferaLados, esferaLados);
-    glPopMatrix();
-    if (usarTextura) {
-        glDisable(GL_TEXTURE_2D);
-    }
-
-    // Desenha marte
-    if (usarTextura) {
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, marteTexture);
-    }
-    glPushMatrix();
-        glTranslatef(-cos(anguloEsferaY*velTransMarte)*distMarte ,0,-sin(anguloEsferaY*velTransMarte)*distMarte);//movimento de translação
-        glRotatef(anguloEsferaY, 0, 1, 0);
-        glRotatef(90, 1, 0, 0);
-        solidSphere(diametroMarte, esferaLados, esferaLados);
-    glPopMatrix();
-    if (usarTextura) {
-        glDisable(GL_TEXTURE_2D);
-    }
-
-    // Desenha jupiter
-    if (usarTextura) {
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, jupiterTexture);
-    }
-    glPushMatrix();
-        glTranslatef(-cos(anguloEsferaY*velTransJupiter)*distJupiter ,0,-sin(anguloEsferaY*velTransJupiter)*distJupiter);//movimento de translação
-        glRotatef(anguloEsferaY, 0, 1, 0);
-        glRotatef(90, 1, 0, 0);
-        solidSphere(diametroJupiter, esferaLados, esferaLados);
-    glPopMatrix();
-    if (usarTextura) {
-        glDisable(GL_TEXTURE_2D);
-    }
-
-    // Desenha saturno
-    if (usarTextura) {
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, saturnoTexture);
-    }
-    glPushMatrix();
-        glTranslatef(-cos(anguloEsferaY*velTransSaturno)*distSaturno ,0,-sin(anguloEsferaY*velTransSaturno)*distSaturno);//movimento de translação
-        glRotatef(anguloEsferaY, 0, 1, 0);
-        glRotatef(90, 1, 0, 0);
-        solidSphere(diametroSaturno, esferaLados, esferaLados);
-    glPopMatrix();
-    if (usarTextura) {
-        glDisable(GL_TEXTURE_2D);
-    }
-
-    // Desenha urano
-    if (usarTextura) {
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, uranoTexture);
-    }
-    glPushMatrix();
-        glTranslatef(-cos(anguloEsferaY*velTransUrano)*distUrano ,0,-sin(anguloEsferaY*velTransUrano)*distUrano);//movimento de translação
-        glRotatef(anguloEsferaY, 0, 1, 0);
-        glRotatef(90, 1, 0, 0);
-        solidSphere(diametroUrano, esferaLados, esferaLados);
-    glPopMatrix();
-    if (usarTextura) {
-        glDisable(GL_TEXTURE_2D);
-    }
-
-    // Desenha netuno
-    if (usarTextura) {
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, netunoTexture);
-    }
-    glPushMatrix();
-        glTranslatef(-cos(anguloEsferaY*velTransNetuno)*distNetuno ,0,-sin(anguloEsferaY*velTransNetuno)*distNetuno);//movimento de translação
-        glRotatef(anguloEsferaY, 0, 1, 0);
-        glRotatef(90, 1, 0, 0);
-        solidSphere(diametroNetuno, esferaLados, esferaLados);
-    glPopMatrix();
-    if (usarTextura) {
-        glDisable(GL_TEXTURE_2D);
-    }
-
-
-    glutSwapBuffers();
+        if(orbitaLigada){
+            if(isLightingOn && lightSolLigada){
+            glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, emissao);
+            }
+            else{
+                glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, emissaoDefault);
+            }
+            glPushMatrix();
+                glLineWidth(2);
+            glBegin(GL_LINE_LOOP);
+            for(int j = 0 ; j <= 360 ; j++){
+                angulo = 2 * 3.14 * j/360;
+                glVertex3f(cos(angulo) * astros[i].distancia, 0 ,sin(angulo) * astros[i].distancia);
+            }
+            glEnd();
+            glPopMatrix();
+        }
+	}
+	glutSwapBuffers();
 }
 
 // Callback de desenho
@@ -433,21 +258,29 @@ void desenhaCena()
 {
     // Propriedades das fontes de luz
     float lightAmb[] = { 0.0, 0.0, 0.0, 1.0 };
-    float lightDif0[] = { d, d, d, 1.0 };
-    float lightSpec0[] = { e, e, e, 1.0 };
-    float lightPos0[] = { 0.0, 0.0, 3.0, p };
+    float lightDif0[] = { 1.0 , 1.0 , 1.0, 1.0 };
+    float lightSpec0[] = { 1.0 , 1.0 , 1.0 , 1.0 };
+    float lightPos0[] = { 0.0, 0.0, 0.0, 1.0 };
     float lightDifAndSpec1[] = { 0.0, 1.0, 0.0, 1.0 };
-    float lightPos1[] = { 1.0, 2.0, 0.0, 1.0 };
-    float globAmb[] = { m, m, m, 1.0 };
-
+    float globAmb[] = { 0.2 , 0.2 , 0.2 , 1.0 };
 
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, globAmb);        // Luz ambiente global
     glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, localViewer);// Enable local viewpoint
 
+    // Propriedades da fonte de luz LIGHT0
+    glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmb);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDif0);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpec0);
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPos0);
+
+    if (lightSolLigada) {
+        glEnable(GL_LIGHT0);
+    } else {
+        glDisable(GL_LIGHT0);
+    }
 
     // Limpa a tela e o z-buffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     glLoadIdentity();
 
     // Posiciona a câmera de acordo com posição x,y do mouse na janela
@@ -457,8 +290,6 @@ void desenhaCena()
 
     // Desabilita iluminação para desenhar as esferas que representam as luzes
     glDisable(GL_LIGHTING);
-
-
 
     if (isLightingOn) {
         glEnable(GL_LIGHTING);
@@ -471,7 +302,7 @@ void desenhaCena()
     glColor3f(1, 1, 1);
 
     //essa função desenha os planetas
-    desenhaPlanetas();
+    desenhaAstros();
 }
 
 
@@ -483,35 +314,6 @@ void keyInput(unsigned char key, int x, int y)
     case 27:
         exit(0);
         break;
-    case 'p':
-    case 'P':
-        if (p) p = 0.0;
-        else p = 1.0;
-        break;
-    case 'd':
-        if (d > 0.0) d -= 0.05;
-        break;
-    case 'D':
-        if (d < 1.0) d += 0.05;
-        break;
-    case 'e':
-        if (e > 0.0) e -= 0.05;
-        break;
-    case 'E':
-        if (e < 1.0) e += 0.05;
-        break;
-    case 's':
-        if (s > 5.0) s -= 2.00;
-        break;
-    case 'S':
-        if (s < 100.0) s += 2.00;
-        break;
-    case 'm':
-        if (m > 0.0) m -= 0.05;
-        break;
-    case 'M':
-        if (m < 1.0) m += 0.05;
-        break;
     case 'l':
     case 'L':
         isLightingOn = !isLightingOn;
@@ -520,27 +322,31 @@ void keyInput(unsigned char key, int x, int y)
     case 'T':
         usarTextura = !usarTextura;
         break;
-    case 'v':
-    case 'V':
-        localViewer = !localViewer;
+    case 's':
+    case 'S':
+        lightSolLigada = !lightSolLigada;
         break;
     case 'c':
     case 'C':
-        if(modo==1){
+        if(modo==-1){
             olhoX = 12;
             olhoY = 12;
             olhoZ = 5;
             modo*=-1;
         }
-        else if(modo==-1){
-            olhoX = 5;
-            olhoY = 25;
+        else if(modo==1){
+            olhoX = 10;
+            olhoY = 50;
             olhoZ = 0;
             modo*=-1;
-            printf("%d\n", modo);
         }
-
         break;
+
+    case 'o':
+    case 'O':
+        orbitaLigada = !orbitaLigada;
+    break;
+
     default:
         break;
     }
@@ -550,27 +356,7 @@ void keyInput(unsigned char key, int x, int y)
 // Callback para setas do teclado
 void specialKeyInput(int key, int x, int y)
 {
-    if(key == GLUT_KEY_DOWN)
-    {
-        xAngle++;
-        if (xAngle > 360.0) xAngle -= 360.0;
-    }
-    if(key == GLUT_KEY_UP)
-    {
-        xAngle--;
-        if (xAngle < 0.0) xAngle += 360.0;
-    }
-    if(key == GLUT_KEY_RIGHT)
-    {
-        yAngle++;
-        if (yAngle > 360.0) yAngle -= 360.0;
-    }
-    if(key == GLUT_KEY_LEFT)
-    {
-        yAngle--;
-        if (yAngle < 0.0) yAngle += 360.0;
-    }
-    glutPostRedisplay();
+    
 }
 
 // Callback de redimensionamento
@@ -587,19 +373,14 @@ void resize(int w, int h)
     glLoadIdentity();
 }
 
-void posicionaCamera(int x, int y) {
-    xMouse = x; //Quando mexe o mouse a camera muda
-    yMouse = y;
-
-    glutPostRedisplay();
-}
-
 void rotacionaEsfera() {
     anguloEsferaY += .1f;
     glutPostRedisplay();
 }
 
 // Imprime a ajuda no console
+
+
 
 int main(int argc, char *argv[])
 {
@@ -612,10 +393,9 @@ int main(int argc, char *argv[])
     glutDisplayFunc(desenhaCena);
     glutReshapeFunc(resize);
     glutKeyboardFunc(keyInput);
-    glutPassiveMotionFunc(posicionaCamera);
     glutSpecialFunc(specialKeyInput);
     glutIdleFunc(rotacionaEsfera);
-
+    glEnable(GL_TEXTURE_2D);
     setup();
 
     glutMainLoop();
